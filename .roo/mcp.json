@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "token-time-planer": {
+      "command": "e:/Dev/ttp-mcp/token-time-planer.exe",
+      "args": ["-mcp"],
+      "env": {},
+      "disabled": false
+    }
+  }
+}
