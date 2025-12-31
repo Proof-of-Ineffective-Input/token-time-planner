@@ -19,6 +19,7 @@
 - **子任务隔离**：支持复杂重构中的上下文重置与时间惩罚建模。
 - **安全缓冲**：内置安全系数，对冲 AI 幻觉和反复调试的时间成本。
 - **原生集成**：通过 MCP 协议完美适配 Cursor, Windsurf 和 Roo Code。
+- **内置规范**：通过 `ttp://spec.md` 资源直接访问完整的技术规范文档。
 
 ## 🛠️ `plan.yaml` 规范
 
@@ -63,7 +64,7 @@ go build -ldflags="-s -w" -o token-time-planer.exe cmd/token-time-planer/main.go
 {
   "mcpServers": {
     "token-time-planer": {
-      "command": "E:/Dev/ttp-mcp/token-time-planer.exe",
+      "command": "~/ttp-mcp/token-time-planer.exe",
       "args": ["-mcp"]
     }
   }

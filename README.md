@@ -19,6 +19,7 @@ In the age of AI Agents, the bottleneck isn't how fast you can type—it's how f
 - **Subtask Logic**: Model complex refactors with context resets and time penalties.
 - **Safety Buffers**: Built-in multipliers to account for the "AI hallucination tax."
 - **IDE Native**: Works seamlessly with Cursor, Windsurf, and Roo Code via MCP.
+- **Embedded Spec**: Access the full technical specification via `ttp://spec.md` resource.
 
 ## 🛠️ The `plan.yaml`
 
@@ -63,7 +64,7 @@ Add this to your settings:
 {
   "mcpServers": {
     "token-time-planer": {
-      "command": "E:/Dev/ttp-mcp/token-time-planer.exe",
+      "command": "~/ttp-mcp/token-time-planer.exe",
       "args": ["-mcp"]
     }
   }
