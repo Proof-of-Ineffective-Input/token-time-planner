@@ -1,101 +1,75 @@
-# Token-Time Planner (TTP)
+# Token-Time Planner (TTP) 🚀
 
-> 让 AI 彻底摆脱"人类时间感"，用 token 量精准估算编码任务的时长与成本。
+[English](README.md) | [中文](README_ZH.md)
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Go Version](https://img.shields.io/badge/Go-1.23+-blue.svg)](https://go.dev/)
-[![MCP Compatible](https://img.shields.io/badge/MCP-Compatible-green.svg)](https://modelcontextprotocol.io)
+**别再靠感觉估时了。** TTP 是一个专为 AI 驱动开发设计的 MCP 服务端。它将工程严谨性引入 Agent 工作流，用 **diff tokens** 和 **重生成倍率** 取代模糊的“大概几天”。
 
----
+## 💡 为什么需要 TTP？
 
-## 📖 背景
+在 AI Agent 时代，开发的瓶颈不再是打字速度，而是模型的吞吐量 (TPS) 和上下文窗口管理。TTP 将开发过程建模为一系列 Token 生成事件，让你清晰掌握：
 
-在 **Token 时代**，实际编码效率由输出速度（TPS）和上下文增长决定。TTP 通过结构化规划，让 AI 工作流回归理性预期。
-
----
+- ⏳ **实际耗时**：基于模型真实速度的预测。
+- 💰 **API 成本**：精确到 Token 的费用预估。
+- 🧠 **上下文压力**：跨文件操作时的 Token 累积情况。
 
 ## ✨ 核心特性
 
-### 📊 结构化规划（plan.yaml）
-- **拓扑排序**：任务按 `files` 列表顺序执行，默认保留上下文。
-- **上下文感知**：区分普通任务与隔离子任务（Subtask）。
-- **模型绑定**：每个任务明确分配 `model_id`，用于精确 TPS 匹配。
+- **上下文感知**：自动计算跨文件操作时的输入 Token 累积。
+- **实时指标**：从 OpenRouter 抓取最新的 TPS 和价格数据。
+- **子任务隔离**：支持复杂重构中的上下文重置与时间惩罚建模。
+- **安全缓冲**：内置安全系数，对冲 AI 幻觉和反复调试的时间成本。
+- **原生集成**：通过 MCP 协议完美适配 Cursor, Windsurf 和 Roo Code。
 
-### 🧮 外部计算器工具（calculate_plan）
-- **动态 TPS 抓取**：自动从 OpenRouter 抓取实时 TPS，若抓取失败则回退至默认 **50 tok/s**。
-- **累加成本计算**：考虑上下文随执行顺序增长带来的输入 Token 成本。
+## 🛠️ `plan.yaml` 规范
 
----
-
-## 📋 plan.yaml 格式详解
-
-### 完整示例
+TTP 驱动核心是一个声明式的 [`plan.yaml`](merge-plan.yaml:1)。
 
 ```yaml
 plan:
-  task_summary: 实现用户头像上传功能
-  confidence: high
-  model_id: anthropic/claude-3.5-sonnet  # 针对此任务分配的主模型
-  safety_buffer: 1.5                     # 全局安全倍率，覆盖 CLI 默认值
-  total_files: 3
-  estimated_total_diff_tokens: 25000
-  estimated_total_regen_rounds: 2
+  task_summary: "重构鉴权逻辑"
+  model_id: "google/gemini-3-flash-preview"
+  safety_rate: 1.5
   files:
-    - path: backend/models/user.go
-      action: modify
-      subtask: false                   # 默认 false，继承前序上下文
-      predicted_diff_tokens: 3000
-      predicted_regen_times: 1
-      description: 添加 avatar_url 字段
-      
-    - path: backend/api/upload.go
-      action: create
-      subtask: true                    # 标记为子任务：隔离上下文，1.2x 启动倍率
-      predicted_diff_tokens: 12000
-      predicted_regen_times: 2
-      description: 实现 S3 上传逻辑（逻辑较独立，建议开启新上下文）
-      
-    - path: frontend/components/Upload.tsx
-      action: create
-      subtask: false                   # 继承 upload.go 的上下文进行联调
-      predicted_diff_tokens: 10000
-      predicted_regen_times: 3
-      description: 实现上传 UI 组件
+    - path: "internal/auth/service.go"
+      action: "modify"
+      predicted_diff_tokens: 2500
+      regen_rate: 2 # 你预计会反复生成几次？
+      description: "更新 JWT 校验逻辑"
 ```
 
-### 字段说明
+## 📐 计算逻辑（极简版）
 
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `model_id` | string | ✅ | 针对此任务分配的模型 ID（用于抓取 TPS） |
-| `safety_buffer` | float | ❌ | 全局安全倍率（默认 1.8）。YAML 中的定义优先级高于 CLI 参数 |
-| `files[].subtask` | bool | ✅ | 是否为隔离子任务。`true` 则不继承上下文，且计算时增加 1.2x 倍率 |
-| `files[].path` | string | ✅ | 文件相对路径。**必须按执行依赖顺序排列** |
+我们基于以下公式推导：
 
----
+1. **输入**：`当前上下文 + 预计 Diff`
+2. **输出**：`预计 Diff × 重生成倍率`
+3. **时长**：`输出 / TPS × 安全系数`
 
-## 🧮 calculate_plan 计算逻辑
+## 🚀 快速开始
 
-### 1. TPS 获取优先级
-1.  实时抓取 OpenRouter 对应 `model_id` 的 `Avg Throughput`。
-2.  若抓取失败，使用默认值 **50 tok/s**。
+### 1. 编译
 
-### 2. 时长预估公式
-- **普通任务**：`Time = (Diff * Regen) / TPS`
-- **子任务**：`Time = (Diff * Regen * 1.2) / TPS`（补偿重新读取上下文的开销）
-
-### 3. 成本预估（上下文累加）
-- 除非 `subtask: true`，否则每个任务的 $Input\_Tokens$ 会包含之前所有任务的 $Diff + Output$。
-
----
-
-## 🎯 系统提示词 (System Prompt)
-
-```markdown
-你是一个 Token-era 软件工程师。
-
-核心规则：
-1. **严禁**提及"小时/天/周"。所有估算基于 **diff token** 和 **再生轮次**。
-2. 规划 `plan.yaml` 时，必须考虑代码依赖关系，按**执行顺序**排列 `files`。
-3. 对于逻辑独立、容易导致上下文爆炸的模块，应设置 `subtask: true` 以隔离风险。
+```bash
+go build -ldflags="-s -w" -o token-time-planer.exe cmd/token-time-planer/main.go
 ```
+
+*注意：在 Windows 上，如果正在运行 MCP，编译前请清空 [`.roo/mcp.json`](.roo/mcp.json:1) 以解除文件锁定。*
+
+### 2. 配置 MCP
+
+在你的 MCP 设置中添加：
+
+```json
+{
+  "mcpServers": {
+    "token-time-planer": {
+      "command": "E:/Dev/ttp-mcp/token-time-planer.exe",
+      "args": ["-mcp"]
+    }
+  }
+}
+```
+
+## 📄 开源协议
+
+采用 [GPLv3](LICENSE:1) 协议。
